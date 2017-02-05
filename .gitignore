@@ -1,0 +1,740 @@
+<h4><span style="color: #333333;"><strong>Introdução</strong></span></h4>
+Nesta aula vamos abordar os seguintes tópicos:
+<ul>
+ 	<li>Subindo nossas fotos para o Cloudnary</li>
+ 	<li>Evoluindo nosso modelo de dados</li>
+ 	<li>incluindo o Geocoder no nosso Projeto</li>
+ 	<li>Criando nossa Wishlist</li>
+ 	<li>Criando o método de pesquisa de Properties</li>
+</ul>
+Então vamos lá! :)
+<h3><strong>Aula em vídeo</strong></h3>
+<iframe src="https://player.vimeo.com/video/200282037" width="640" height="480" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+
+<span style="color: #ff9900;"><strong>Avisos importantes antes da aula:
+<ol>
+ 	<li>O aviso bom é que baseado no interesse que vocês demonstraram na Live por uma explicação em vídeo sobre como subir nossos files direto para o Cloudinary, ao invés de deixá-los na API eu incluí esse tema no vídeo e ficou bem legal :)</li>
+ 	<li><strong>O aviso mais importante:</strong> na parte "incluindo o Geocoder no nosso Projeto" eu atualizo o Model Address porém o Model Address é criado na parte seguinte do Vídeo em "Evoluindo nosso modelo de dados", por tanto inverta a ordem da execução, primeiro comece pela parte "Evoluindo nosso modelo de dados" e depois prossiga para "incluindo o Geocoder no nosso Projeto", obrigado e desculpe pela confusão :).</li>
+</ol>
+&nbsp;
+
+&nbsp;
+<h3><strong>Aula em texto</strong></h3>
+<h5><span style="color: #d91438;"><strong>Subindo nossas fotos para o Cloudinary</strong></span></h5>
+Vamos começar melhorando nosso processo de upload de fotos incluindo o Cloudinary como um CDN que vai armazenar nossas fotos online quando subirmos ela para a API. Para começar vocês precisam criar uma conta lá:
+<div>
+<ol>
+ 	<li><span style="color: #333333;">Criando uma conta no Cloudinary e pegando a API KEY</span>
+<ul>
+ 	<li>Agora vamos criar nossas credenciais no site do cloudinary para podermos usar o serviço deles, primeiro visite: <span style="color: #dd370a;"><a style="color: #dd370a;" href="http://cloudinary.com/" target="_blank" shape="rect">http://cloudinary.com/</a></span>
+<a href="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-1.png"><img class="size-full wp-image-538 aligncenter" src="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-1.png" alt="" width="1353" height="506" /></a></li>
+ 	<li>Crie uma conta no cloudinary:
+<a href="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-2.png"><img class="size-full wp-image-539 aligncenter" src="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-2.png" alt="" width="1355" height="509" /></a></li>
+ 	<li>Pegue suas credenciais no dashboard na seção Account Details clicando do lado direito em cima no botão Download YML, ele vai baixar um arquivo chamado cloudinary.yml, coloque esse arquivo na pasta ‘config’ do seu projeto:
+<a href="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-3.png"><img class="size-full wp-image-540 aligncenter" src="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/m3-r-3.png" alt="" width="1179" height="477" /></a></li>
+</ul>
+</li>
+ 	<li><span style="color: #333333;">Incluindo a Gem</span>
+<pre lang="shell">gem 'cloudinary'</pre>
+</li>
+ 	<li>Rode o build:
+<pre lang="shell">docker-compose up --build</pre>
+</li>
+ 	<li>Incluindo no Uploader
+<pre lang="shell">class PhotoUploader < CarrierWave::Uploader::Base
+  include CarrierWave::MiniMagick
+  include Cloudinary::CarrierWave unless Rails.env.test?
+  def store_dir
+    "uploads/#{model.class.to_s.underscore}/#{mounted_as}/#{model.id}"
+  end
+  version :thumb do
+    process resize_to_fit: [50, 50]
+  end
+  def extension_whitelist
+    %w(jpg jpeg gif png)
+  end
+end</pre>
+</li>
+ 	<li>Pronto \o/, agora quando subirmos novas imagens elas irão para o Cloudinary.</li>
+</ol>
+<h5><span style="color: #d91438;"><strong>Evoluindo nossos modelos de dados</strong></span></h5>
+</div>
+Como nosso projeto está crescendo, nossa estrutura do banco de dados também precisa crescer e se adaptar para dar suporte às novas features que vamos desenvolver, então vamos criar alguns novos Models.
+<div>
+<ol>
+ 	<li>Tirando o versionamento do Property, versionar nossos models pode facilitar em uma versão v2 da API mas irá complicar muito a v1, então vamos focar no que importa :), rode no console dentro do seu projeto.
+<pre lang="shell">docker-compose run website rails d model api/v1/property</pre>
+</li>
+ 	<li>Criando a tabela Address, rode:
+<pre lang="shell">docker-compose run website rails g model address country:string state:string city:string neighborhood:string street:string number:string zipcode:string latitude:decimal longitude:decimal</pre>
+</li>
+ 	<li>Criando a tabela Facility, rode:
+<pre lang="shell">docker-compose run website rails g model facilities wifi:boolean washing_machine:boolean clothes_iron:boolean towels:boolean air_conditioning:boolean heater:boolean refrigerator:boolean</pre>
+</li>
+ 	<li>Vamos recriar nossa tabela property como novos dados e fora do versionamento, rode:
+<pre lang="shell">docker-compose run website rails g model property price:decimal name:string description:text user:references accommodation_type:integer guest_max:integer beds:integer bedroom:integer address:references status:integer facility:references bathroom:integer</pre>
+</li>
+ 	<li>Criando a tabela Whishlist, rode:
+<pre lang="shell">docker-compose run website rails g model wishlist user:references property:references</pre>
+</li>
+ 	<li>Precisamos alterar nosso Property e incluir os enuns e também um has_many para o modal de photos que vamos criar em breve, substitua o conteúdo de '/app/models/property.rb' pelo conteúdo abaixo:
+<pre lang="shell">lass Property < ApplicationRecord
+  # Os possiveis status de uma Propriedades
+  enum status: [ :active, :pending, :inactive, :blocked ]
+  # Os tipos de acomodação: casa inteira, quarto inteiro e quarto compartilhado
+  enum accommodation_type: [ :whole_house, :whole_bedroom :shared_bedroom ]
+
+  belongs_to :user
+  belongs_to :address
+  belongs_to :facility
+  has_many :wishlists
+  has_many :photos
+end</pre>
+</li>
+ 	<li>Vamos criar nossa tabela Photos para incluir múltiplas fotos no nosso model Property:
+<pre lang="shell">docker-compose run website rails g model photos property:references photo:string</pre>
+</li>
+ 	<li>Agora vamos acrescentar a ele o Uploader, coloque no arquivo '/app/models/photo.rb':
+<pre lang="shell">class Photo < ApplicationRecord
+  belongs_to :property
+  mount_base64_uploader :photo, PhotoUploader
+end</pre>
+</li>
+ 	<li>Agora vamos acrescentar no nosso User o has_many do Model WIshlist que criamos, coloque no arquivo '/app/models/user.rb' o seguinte código:
+<pre lang="shell">class User < ActiveRecord::Base
+  # Include default devise modules.
+  devise :database_authenticatable, :registerable,
+          :recoverable, :rememberable, :trackable, :validatable,
+          :confirmable, :omniauthable
+  include DeviseTokenAuth::Concerns::User
+  mount_base64_uploader :photo, PhotoUploader
+  has_many :wishlists
+end</pre>
+</li>
+ 	<li>Agora vamos rodar as migrations, pare seu servidor e depois rode:
+<pre lang="shell">docker-compose run website rake db:migrate</pre>
+</li>
+</ol>
+<div>
+<h5></h5>
+<h5><span style="color: #d91438;"><strong>Incluindo o Geocoder no nosso projeto
+</strong></span></h5>
+Vamos incluir no nosso Projeto a ferramenta que vai converter nosso endereço para latitude e longitude:
+
+</div>
+<ol>
+ 	<li>Incluindo a Gem no nosso ''Gemfile:
+<pre lang="shell">gem 'geocoder'</pre>
+</li>
+ 	<li>Incluindo as configurações no nosso Model Address, no arquivo '/app/models/address.rb' coloque o seguinte conteúdo:
+<pre lang="shell">class Address < ApplicationRecord
+  # Após a validação de dados chama o método para pegar a latitude e longitude
+  after_validation :geocode
+
+  # Chama a API do geocode e devolve os dados completos do endereço
+  # Com os dados nós preenchemos a latitude e longitude
+  geocoded_by :full_address do |obj,results|
+    if geo = results.first
+      obj.latitude = geo.latitude
+      obj.longitude = geo.longitude
+    end
+  end
+
+  # Monta uma String com o endereço completo
+  def full_address
+    "#{self.street}, #{self.neighborhood}, #{self.city} #{number}, #{self.country}"
+  end
+end</pre>
+</li>
+ 	<li>Para testar no console, rode:
+<pre lang="shell">docker-compose run website rails c</pre>
+</li>
+ 	<li>Agora insira a ação de criação de um novo address:
+<pre lang="shell">Address.create(country: 'Brazil', state: 'Sao Paulo',     city: 'Sao Paulo', neighborhood: 'Bela Vista', street: 'Av Paulista', number: '1000')</pre>
+</li>
+ 	<li>Para ver se funcionou rode:
+<pre lang="shell">Address.last.latitude.to_s</pre>
+<a href="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/Captura-de-tela-de-2017-01-19-17-42-42.png"><img class="alignnone size-full wp-image-548" src="http://bootcamp.onebitcode.com/wp-content/uploads/2017/01/Captura-de-tela-de-2017-01-19-17-42-42.png" alt="" width="673" height="82" /></a></li>
+ 	<li>Pronto \o/, vamos para o próximo passo.</li>
+</ol>
+<div></div>
+<div>
+<h5><span style="color: #d91438;"><strong>Criando nossa Wishlist
+</strong></span></h5>
+Agora vamos criar a nossa Wishlist, ela é a listagem de propriedades que um usuário favoritou enquanto estava no nosso site para ver depois.
+
+</div>
+<ol>
+ 	<li>Incluindo o métodos para adicionar e remover da Wishlist no controller Property, no seu arquivo '/app/controllers/api/v1/property_controller.rb' substitua o conteúdo por:
+<pre lang="shell">class Api::V1::PropertiesController < ApplicationController
+  before_action :set_api_v1_property, only: [:show, :update, :destroy, :add_to_wishlist, :remove_from_wishlist]
+  before_action :authenticate_api_v1_user!, except: [:index, :show, :search]
+
+  # GET /api/v1/properties
+  # GET /api/v1/properties.json
+  def index
+    @api_v1_properties = Property.all
+  end
+
+  # GET /api/v1/properties/1.json
+  def show
+  end
+
+
+  # POST /api/v1/properties.json
+  def create
+    @api_v1_property = Property.new(api_v1_property_params)
+
+    if @api_v1_property.save
+      render :show, status: :created, location: @api_v1_property
+    else
+      render json: @api_v1_property.errors, status: :unprocessable_entity
+    end
+  end
+
+  # PATCH/PUT /api/v1/properties/1.json
+  def update
+    if @api_v1_property.update(api_v1_property_params)
+      render :show, status: :ok, location: @api_v1_property
+    else
+      render json: @api_v1_property.errors, status: :unprocessable_entity
+    end
+  end
+
+  # DELETE /api/v1/properties/1.json
+  def destroy
+    @api_v1_property.destroy
+  end
+
+  # POST /api/v1/properties/:id/wishlist.json
+  def add_to_wishlist
+    begin
+      @api_v1_property.wishlists.find_or_create_by(user: current_api_v1_user)
+      render json: {success: true}
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
+  end
+
+  # DELETE /api/v1/properties/:id/wishlist.json
+  def remove_from_wishlist
+    begin
+      @api_v1_property.wishlists.find_by(user: current_api_v1_user).delete
+      render json: {success: true}, status: 200
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
+  end
+
+  private
+    # Use callbacks to share common setup or constraints between actions.
+    def set_api_v1_property
+      @api_v1_property = Property.find(params[:id])
+    end
+
+    # Never trust parameters from the scary internet, only allow the white list through.
+    def api_v1_property_params
+      params.require(:api_v1_property).permit(:title, :description)
+    end
+end</pre>
+</li>
+ 	<li>Incluindo o método para listar a Wishlist no controller User, no seu arquivo '/app/controllers/api/v1/users_controller.rb' substitua o conteúdo por:
+<pre lang="shell">class Api::V1::UsersController < ApplicationController
+  before_action :authenticate_api_v1_user!
+  # before_action :set_user, only: [:update]
+
+  # GET /api/v1/users/:id/wishlist
+  def wishlist
+    @api_v1_properties = current_api_v1_user.wishlists.map {|w| w.property}
+    render template: '/api/v1/properties/index', status: 200
+  end
+
+  def update
+    @user = current_api_v1_user
+    if @user.update(user_params)
+      render :show, status: :ok
+    else
+      render json: @user.errors, status: :unprocessable_entity
+    end
+  end
+
+  private
+    # Use callbacks to share common setup or constraints between actions.
+    # def set_user
+    #   @user = User.find(params[:id])
+    # end
+
+    # Never trust parameters from the scary internet, only allow the white list through.
+    def user_params
+      params.require(:user).permit(:name, :photo)
+    end
+end</pre>
+</li>
+ 	<li>Agora nós vamos melhorar a partial de template JSON da Property para poder retornar nossas Properties com todas as novas informações, no seu arquivo '/app/views/api/v1/properties/_api_v1_property.json.jbuilder' substitua o conteúdo por:
+<pre lang="shell">json.property do
+  json.extract! api_v1_property, :id, :price, :name, :description, :user_id, :accommodation_type , :guest_max, :beds, :bedroom, :status , :bathroom , :created_at , :updated_at
+
+  json.address do
+    json.extract! api_v1_property.address, :id, :country, :city, :neighborhood, :street, :number, :zipcode, :latitude, :longitude, :created_at, :updated_at, :state
+  end
+  json.facility do
+    json.extract! api_v1_property.facility, :id, :wifi, :washing_machine, :clothes_iron, :towels, :air_conditioning, :refrigerator, :created_at, :updated_at, :heater
+  end
+
+  json.user do
+    json.extract! api_v1_property.user, :id, :name, :email, :image, :created_at, :updated_at
+  end
+
+  json.photos api_v1_property.photos.map {|p| p.photo.url}
+end</pre>
+</li>
+ 	<li>Pronto, agora é hora de testarmos (<strong>Seguindo o TDD a ordem certa é testar antes de criar as funções, mas para que fique mais claro o que estamos fazendo eu deixei os testes depois</strong>)
+<ol>
+ 	<li>Vamos atualizar o conteúdo da nossa Factory Address, no seu arquivo '/spec/factories/addresses.rb' coloque o seguinte conteúdo:
+<pre lang="shell">FactoryGirl.define do
+  factory :address do
+    country FFaker::Address::country
+    state FFaker::AddressBR::state
+    city FFaker::AddressBR::city
+    neighborhood FFaker::Address::neighborhood
+    street FFaker::Address::street_name
+    number FFaker::Address::building_number
+    zipcode FFaker::AddressBR::zip_code
+    latitude FFaker::Geolocation::lat
+    longitude FFaker::Geolocation::lng
+  end
+end</pre>
+</li>
+ 	<li>Vamos atualizar o conteúdo da nossa Factory Facilities, no seu arquivo '/spec/factories/facilities.rb' coloque o seguinte conteúdo:
+<pre lang="shell">FactoryGirl.define do
+  factory :facility do
+    wifi FFaker::Boolean::maybe
+    washing_machine FFaker::Boolean::maybe
+    clothes_iron FFaker::Boolean::maybe
+    towels FFaker::Boolean::maybe
+    air_conditioning FFaker::Boolean::maybe
+    heater FFaker::Boolean::maybe
+    refrigerator FFaker::Boolean::maybe
+  end
+end</pre>
+</li>
+ 	<li>Vamos atualizar o conteúdo da nossa Factory Properties, no seu arquivo '/spec/factories/properties.rb' coloque o seguinte conteúdo:
+<pre lang="shell">FactoryGirl.define do
+  factory :property do
+    price FFaker.numerify("#.##").to_f
+    name FFaker::Lorem.word
+    description FFaker::Lorem.paragraph
+    user
+    accommodation_type { rand(0..2) } # :whole_house, :whole_bedroom :shared_bedroom
+    guest_max { rand(1..10) }
+    beds { rand(1..10) }
+    bedroom { rand(1..10) }
+    address
+    status { rand(0..3) } # :active, :pending, :inactive, :blocked
+    facility
+    bathroom { rand(1..10) }
+  end
+end</pre>
+</li>
+ 	<li>Vamos atualizar o conteúdo da nossa Factory Users, no seu arquivo '/spec/factories/users.rb' coloque o seguinte conteúdo:
+<pre lang="shell">#Esta factory serve para sempre que precisemos de um record user em um teste nós não precisemos criá-lo durante o teste e correr o risco de errar :)
+
+FactoryGirl.define do
+ timestamp = DateTime.parse(2.weeks.ago.to_s).to_time.strftime("%F %T")
+
+ factory :user do
+   uid          { FFaker::Lorem.word }
+   email        { FFaker::Internet.email }
+   nickname     { FFaker::Lorem.word }
+   provider     'email'
+   confirmed_at timestamp
+   created_at   timestamp
+   updated_at   timestamp
+   password 'secret123'
+ end
+end</pre>
+</li>
+ 	<li>Vamos atualizar o conteúdo da nossa Factory Wishlists, no seu arquivo '/spec/factories/wishlists.rb' coloque o seguinte conteúdo:
+<pre lang="shell">FactoryGirl.define do
+  factory :wishlist do
+    user
+    property
+  end
+end</pre>
+</li>
+ 	<li>Agora precisamos criar o controller de teste property, crie o seguinte arquivo '/spec/controllers/api/v1/properties_controller_spec.rb' e coloque o código abaixo:
+<pre lang="shell">require 'rails_helper'
+
+RSpec.describe Api::V1::PropertiesController, type: :controller do
+  describe "POST #wishlist" do
+    before do
+      @user = create(:user)
+      @property = create(:property)
+
+      @auth_headers = @user.create_new_auth_token
+      request.env["HTTP_ACCEPT"] = 'application/json'
+    end
+
+    context "with valid params and tokens" do
+      before do
+        request.headers.merge!(@auth_headers)
+      end
+
+      it "add to wishlist" do
+        post :add_to_wishlist, params: {id: @property.id}
+        @property.reload
+        expect(@property.wishlists.last.id).to eql(Wishlist.last.id)
+      end
+    end
+
+    context "with invalid tokens" do
+      it "can't add to wishlist" do
+        post :add_to_wishlist, params: {id: @property.id}
+        expect(response.status).to eql(401)
+      end
+    end
+  end
+
+  describe "DELETE #wishlist" do
+    before do
+      @user     = create(:user)
+      @property = create(:property)
+      @wishlist = create(:wishlist, user: @user, property: @property)
+
+      @auth_headers = @user.create_new_auth_token
+      request.env["HTTP_ACCEPT"] = 'application/json'
+    end
+
+    context "with valid params and tokens" do
+      before do
+        request.headers.merge!(@auth_headers)
+      end
+
+      it "remove from wishlist" do
+        delete :remove_from_wishlist, params: {id: @property.id}
+        expect(Wishlist.all.count).to eql(0)
+      end
+    end
+
+    context "with invalid tokens" do
+      it "can't add to wishlist" do
+        delete :remove_from_wishlist, params: {id: @property.id}
+        expect(response.status).to eql(401)
+      end
+
+      it "whishlist keep existing" do
+        delete :remove_from_wishlist, params: {id: @property.id}
+        expect(Wishlist.all.count).not_to eql(0)
+      end
+    end
+  end
+end</pre>
+</li>
+ 	<li>Vamos adicionar o método de teste da listagem de wishlists no User, no seu arquivo '/spec/controllers/api/v1/users_controller_spec.rb' adicione o seguinte contexto de teste abaixo dos outros já existentes:
+<pre lang="shell">describe "GET #wishist" do
+  before do
+    @user = create(:user)
+    @auth_headers = @user.create_new_auth_token
+    request.env["HTTP_ACCEPT"] = 'application/json'
+    @new_attributes = {name: FFaker::Name.name}
+  end
+
+  context "with valid params and tokens" do
+    before do
+      # Aqui nós estamos colocando no header os tokens (Sem isso a chamada seria bloqueada)
+      request.headers.merge!(@auth_headers)
+      @wishlist = create(:wishlist, user: @user)
+      @wishlist2 = create(:wishlist, user: @user)
+    end
+
+    it "get a list with two properties" do
+      get :wishlist
+      expect(JSON.parse(response.body).count).to eql(2)
+    end
+  end
+
+  context "with invalid params and tokens" do
+    before do
+      @wishlist = create(:wishlist, user: @user)
+      @wishlist2 = create(:wishlist, user: @user)
+    end
+
+    it "get a status 401" do
+      get :wishlist
+      expect(response.status).to eql(401)
+    end
+  end
+end</pre>
+</li>
+ 	<li>Pronto, agora para rodar nossos testes;
+<pre lang="shell">docker-compose run website rspec</pre>
+</li>
+ 	<li>Sucesso, nossos testes funcionaram :)</li>
+</ol>
+</li>
+</ol>
+<div></div>
+<div>
+<h5><span style="color: #d91438;"><strong>Criando o Método de pesquisa e Properties
+</strong></span></h5>
+Finalmente chegamos à última parte, agora vamos incluir os nossos serviços de pesquisa para permitir que os usuários possam fazer buscas na nossa API para encontrar propriedades nas localizações que eles desejam.
+
+</div>
+<ol>
+ 	<li>Para instalar o ElastichSearch via Docker Compose, atualize seu Docker-Compose.yml substituindo o conteúdo dele por:
+<pre lang="shell">version: '2'
+
+services:
+  postgres:
+    image: 'postgres:9.5'
+    volumes:
+      - 'postgres:/var/lib/postgresql/data'
+
+  # mailcatcher:
+  #   image: yappabe/mailcatcher
+  #   ports:
+  #       - 1025:1025
+  #       - 1080:1080
+
+  # redis:
+  #   image: 'redis:3.2-alpine'
+  #   command: redis-server
+  #   ports:
+  #     - '6379:6379'
+  #   volumes:
+  #     - 'redis:/var/lib/redis/data'
+
+  website:
+    depends_on:
+      - 'postgres'
+      # - 'redis'
+    build: .
+    ports:
+      - '3000:3000'
+    volumes:
+      - '.:/onebnb_api'
+    env_file:
+      - '.env'
+    environment:
+      ELASTICSEARCH_URL: elasticsearch:9200
+
+  # cable:
+  #   depends_on:
+  #     - 'redis'
+  #   build: .
+  #   command: puma -p 28080 cable/config.ru
+  #   ports:
+  #     - '28080:28080'
+  #   volumes:
+  #     - '.:/onebnb_api'
+  #   env_file:
+  #     - '.env'
+
+  elasticsearch:
+    image: 'elasticsearch:2'
+    ports:
+      - '9200:9200'
+    volumes:
+      - 'elastic:/usr/share/elasticsearch/data'
+    environment:
+      - Des.network.host=0.0.0.0
+
+volumes:
+  redis:
+  postgres:
+  elastic:</pre>
+</li>
+ 	<li>Agora inclua a Gem do 'searchkick' no seu Gemfile:
+<pre lang="shell">gem 'searchkick'</pre>
+</li>
+ 	<li>Vamos adicionar ao Model Property o nosso search_data que é o método que o Elastic Search vai usar para saber em quais dados pesquisar, substitua o conteúdo do seu arquivo '/app/models/property.rb' por:
+<pre lang="shell">class Property < ApplicationRecord
+  # Os possíveis status de uma Propriedades
+  enum status: [ :active, :pending, :inactive, :blocked ]
+  # Os tipos de acomodação: casa inteira, quarto inteiro e quarto compartilhado
+  enum accommodation_type: [ :whole_house, :whole_bedroom, :shared_bedroom ]
+
+  belongs_to :user
+  belongs_to :address
+  belongs_to :facility
+  has_many :wishlists
+  has_many :photos
+  searchkick
+
+  def search_data
+    {
+      status: status,
+      address_country: address.country,
+      address_city: address.city,
+      address_state: address.state,
+      address_neighborhood: address.neighborhood,
+      wifi: facility.wifi,
+      washing_machine: facility.washing_machine,
+      clothes_iron: facility.clothes_iron,
+      towels: facility.towels,
+      air_conditioning: facility.air_conditioning,
+      refrigerato: facility.refrigerator,
+      heater: facility.heater
+    }
+  end
+end</pre>
+</li>
+ 	<li>Vamos incluir agora no nosso Controller Property o método para realizar a pesquisa, no seu arquivo '/app/controllers/api/v1/properties_controller.rb' substitua o conteúdo por:
+<pre lang="shell">class Api::V1::PropertiesController < ApplicationController
+  before_action :set_api_v1_property, only: [:show, :update, :destroy, :add_to_wishlist, :remove_from_wishlist]
+  before_action :authenticate_api_v1_user!, except: [:index, :show, :search]
+
+  # GET /api/v1/properties
+  # GET /api/v1/properties.json
+  def index
+    @api_v1_properties = Property.all
+  end
+
+  # GET /api/v1/properties/1.json
+  def show
+  end
+
+  # GET /api/v1/search
+  def search
+    # Caso o usuário não coloque nenhuma informação pesquisamos por qualquer uma
+    search_condition = params[:search] || '*'
+    # Caso não esteja sendo selecionado por página, pegamos a primeira
+    page = params[:page] || 1
+    # Filtra por status, presença de wifi, máquina de lavar e etc
+    # Faça você mesmo \o/
+    conditions = {status: :active}
+
+    # Realizamos a busca do ElasticSearch
+    @api_v1_properties = (Property.search search_condition, where: conditions,  page: page, per_page: 18)
+    render template: '/api/v1/properties/index', status: 200
+  end
+
+  # POST /api/v1/properties.json
+  def create
+    @api_v1_property = Property.new(api_v1_property_params)
+
+    if @api_v1_property.save
+      render :show, status: :created, location: @api_v1_property
+    else
+      render json: @api_v1_property.errors, status: :unprocessable_entity
+    end
+  end
+
+  # PATCH/PUT /api/v1/properties/1.json
+  def update
+    if @api_v1_property.update(api_v1_property_params)
+      render :show, status: :ok, location: @api_v1_property
+    else
+      render json: @api_v1_property.errors, status: :unprocessable_entity
+    end
+  end
+
+  # DELETE /api/v1/properties/1.json
+  def destroy
+    @api_v1_property.destroy
+  end
+
+  # POST /api/v1/properties/:id/wishlist.json
+  def add_to_wishlist
+    begin
+      @api_v1_property.wishlists.find_or_create_by(user: current_api_v1_user)
+      render json: {success: true}
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
+  end
+
+  # DELETE /api/v1/properties/:id/wishlist.json
+  def remove_from_wishlist
+    begin
+      @api_v1_property.wishlists.find_by(user: current_api_v1_user).delete
+      render json: {success: true}, status: 200
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
+  end
+
+  private
+    # Use callbacks to share common setup or constraints between actions.
+    def set_api_v1_property
+      @api_v1_property = Property.find(params[:id])
+    end
+
+    # Never trust parameters from the scary internet, only allow the white list through.
+    def api_v1_property_params
+      params.require(:api_v1_property).permit(:title, :description)
+    end
+end</pre>
+</li>
+ 	<li>Pronto \o/, criamos nosso método, agora vamos incluir um teste para ele no nosso arquivo '/spec/controllers/api/v1/properties_controller_spec.rb' depois dos outros testes já existentes:
+<pre lang="shell">describe "GET #search" do
+    before do
+      request.env["HTTP_ACCEPT"] = 'application/json'
+    end
+
+    context "with a property associated a search query" do
+      it "receive one result when property active" do
+        @address = create(:address, city: 'Sao Paulo')
+        @property = create(:property, address: @address, status: :active)
+        # Force reindex
+        Property.reindex
+
+        get :search, params: {search: 'Sao Paulo'}
+        expect(JSON.parse(response.body).count).to eql(1)
+      end
+
+      it "receive zero result when property not active" do
+        @address = create(:address, city: 'Sao Paulo')
+        @property = create(:property, address: @address, status: :inactive)
+        # Force reindex
+        Property.reindex
+
+        get :search, params: {search: 'Sao Paulo'}
+        expect(JSON.parse(response.body).count).to eql(0)
+      end
+    end
+
+    context "without a property associated a search query" do
+      it "receive zero result" do
+        @address = create(:address, city: 'Sao Paulo')
+        @property = create(:property, address: @address)
+        # Force reindex
+        Property.reindex
+
+        get :search, params: {search: 'Manaus'}
+        expect(JSON.parse(response.body).count).to eql(0)
+      end
+    end
+  end</pre>
+</li>
+ 	<li>Agora vamos rodar nosso teste, rode no console:
+<pre lang="shell">docker-compose run website rspec</pre>
+</li>
+ 	<li>Sucesso \o/, conseguimos concluir mais um módulo juntos, parabéns! :)</li>
+</ol>
+<h5><span style="color: #d91438;"><strong>Faça você mesmo</strong></span></h5>
+<strong>Fácil</strong>
+<ol>
+ 	<li>Limpe os arquivos da pasta '/public/uploads' após o teste para que os arquivos de teste não se acumulem na nossa aplicação.</li>
+ 	<li>Teste o método Geocode para garantir que ele está trazendo as coordenadas geográficas.</li>
+ 	<li>Incremente os testes da Wishlist no controller Properties</li>
+</ol>
+<strong>Médio</strong>
+<ol>
+ 	<li>Inclua filtros no nosso Search baseado nas Facilities (Se tem Wifi, Ar Condicionado e Etc)</li>
+</ol>
+&nbsp;
+
+</div>
+<h4><span style="color: #dd370a;"><strong>Conclusão</strong></span></h4>
+Tivemos mais um módulo Longo e cheio de novos conceitos, isso é muito bom. Nesta semana nós percorremos desde o upload de files para o cloudinary, geocoder, modelagem de dados, wishlist até as pesquisas usando o Elastic Search. Então eu sugiro que você veja com calma o conteúdo e se possível veja duas vezes para fixar caso tenha dificuldade em alguma parte. Mas não se preocupe vamos revisar tudo isso na Live como sempre e vai ficar mais simples \o/
+
+Se você ficou com alguma dúvida sobre este <strong>terceiro módulo</strong>, comente aí em baixo, interaja no <a style="color: #037f8c;" href="https://bootcamponebitcode.slack.com/" target="_blank">Slack</a> ou me adicione no Facebook <a style="color: #037f8c;" href="https://www.facebook.com/leonardo.scorzadesouza" target="_blank">clicando aqui</a>.
+<span style="color: #333333;">E não esqueça de anotar suas dúvidas para a</span> <span style="color: #d91438;"><strong>Live</strong></span> que acontecerá dia <span style="color: #d91438;"><strong>23/01/2017</strong></span> às <span style="color: #d91438;"><strong>20h30</strong><span style="color: #333333;">!</span></span>
+
+Bons estudos!
+
+Obrigado pela confiança.
+Sua presença aqui é uma honra para mim,
+
+Leonardo Scorza

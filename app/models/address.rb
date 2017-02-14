@@ -13,6 +13,6 @@ class Address < ApplicationRecord
 
   # Monta uma String com o endereço completo
   def full_address
-    "#{self.street}, #{self.neighborhood}, #{self.city} #{number}, #{self.country}"
+    "#{self.street}, #{self.neighborhood}, #{self.city} #{self.number}, #{self.country}"
   end
 end

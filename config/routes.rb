@@ -13,7 +13,7 @@ Rails.application.routes.draw do
           delete 'wishlist', to: 'properties#remove_from_wishlist'
         end
       end
-
+      get 'hot_properties', to: 'properties#hot_properties'
     end
   end
 end

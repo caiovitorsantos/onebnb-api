@@ -1,6 +1,6 @@
 class Api::V1::PropertiesController < ApplicationController
   before_action :set_api_v1_property, only: [:show, :update, :destroy, :add_to_wishlist, :remove_from_wishlist]
-  before_action :authenticate_api_v1_user!, except: [:index, :show, :search]
+  before_action :authenticate_api_v1_user!, except: [:index, :show, :search, :hot_properties]
 
   # GET /api/v1/properties
   # GET /api/v1/properties.json
@@ -71,6 +71,12 @@ class Api::V1::PropertiesController < ApplicationController
     rescue Exception => errors
       render json: errors, status: :unprocessable_entity
     end
+  end
+
+  # GET /api/v1/hot_properties
+  def hot_properties
+    @api_v1_properties = Property.where(rating: 5).take(3)
+    render template: '/api/v1/properties/index.json.jbuilder', status: 200
   end
 
   private

@@ -1,6 +1,7 @@
+
 class Api::V1::PropertiesController < ApplicationController
   before_action :set_api_v1_property, only: [:show, :update, :destroy, :add_to_wishlist, :remove_from_wishlist]
-  before_action :authenticate_api_v1_user!, except: [:index, :show, :search, :hot_properties]
+  before_action :authenticate_api_v1_user!, except: [:index, :show, :search, :hot_properties, :autocomplete]
 
   # GET /api/v1/properties
   # GET /api/v1/properties.json
@@ -10,6 +11,18 @@ class Api::V1::PropertiesController < ApplicationController
 
   # GET /api/v1/properties/1.json
   def show
+  end
+
+  # GET /api/v1/autocomplete
+  def autocomplete
+    results = []
+
+    Property.where(status: :active).each do |property|  
+      results << property.name
+      results << property.address.city
+      results << property.address.country
+    end
+    render json: results, status: 200
   end
 
   # GET /api/v1/search
@@ -74,10 +87,30 @@ class Api::V1::PropertiesController < ApplicationController
   end
 
   # GET /api/v1/hot_properties
+  # GET /api/v1/hot_properties.json
   def hot_properties
-    @api_v1_properties = Property.where(rating: 5).take(3)
-    render template: '/api/v1/properties/index.json.jbuilder', status: 200
+    properties = []
+    begin
+      Property.where(priority: true, status: :active).order("RANDOM()").limit(1).each{ |p| properties << p }
+      
+      end_date = Time.new
+      begin_date =  end_date - (60 * 60 * 24 * 10)
+      most_visited = Visitor.where(created_at: begin_date..end_date).order("RANDOM()").group(:property_id).count.take(10).first[0]
+      # Without '[0]' the query return [:property_id, count_all]
+      properties << Property.find(most_visited)
+
+      missing = 3 - properties.count
+
+      Property.where(status: :active).order("RANDOM()").limit(missing).each{ |p| properties << p } if missing > 0
+      @api_v1_properties = properties
+
+
+      render template: '/api/v1/properties/index.json.jbuilder', status: 200
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
   end
+
 
   private
     # Use callbacks to share common setup or constraints between actions.

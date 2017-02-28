@@ -4,16 +4,28 @@ Rails.application.routes.draw do
 
       mount_devise_token_auth_for 'User', at: 'auth'
       get 'users/wishlist', to: 'users#wishlist'
-      resources :users, only: [:update]
+      put 'users', to: 'users#update'
+      # get 'current_user', 'users#current_user'
 
       get 'search', to: 'properties#search'
+      get 'autocomplete', to: 'properties#autocomplete'
+      get 'hot_properties', to: 'properties#hot_properties'
+      
       resources :properties do
         member do
           post 'wishlist', to: 'properties#add_to_wishlist'
           delete 'wishlist', to: 'properties#remove_from_wishlist'
         end
       end
-      get 'hot_properties', to: 'properties#hot_properties'
+    
+      resources :reservations  do
+        member do
+          post 'evaluation', to: 'reservation#evaluation'
+        end
+      end
+
+      post 'visitors', to: "visitors#create"
+    
     end
   end
 end

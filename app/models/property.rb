@@ -10,6 +10,8 @@ class Property < ApplicationRecord
   has_many :wishlists
   has_many :photos
   has_many :comments
+  has_many :reservations
+  has_many :visitors
 
   searchkick
 
@@ -19,6 +21,7 @@ class Property < ApplicationRecord
 
   def search_data
     {
+      name: name,
       status: status,
       address_country: address.country,
       address_city: address.city,
@@ -32,5 +35,10 @@ class Property < ApplicationRecord
       refrigerato: facility.refrigerator,
       heater: facility.heater
     }
+  end
+
+  # def self.get_rating
+  def get_rating
+    self.rating.round    
   end
 end

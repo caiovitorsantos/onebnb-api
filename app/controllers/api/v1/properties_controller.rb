@@ -95,9 +95,9 @@ class Api::V1::PropertiesController < ApplicationController
       
       end_date = Time.new
       begin_date =  end_date - (60 * 60 * 24 * 10)
-      most_visited = Visitor.where(created_at: begin_date..end_date).order("RANDOM()").group(:property_id).count.take(10).first[0]
+      most_visited = Visitor.where(created_at: begin_date..end_date).order("RANDOM()").group(:property_id).count.take(10).first
       # Without '[0]' the query return [:property_id, count_all]
-      properties << Property.find(most_visited)
+      properties << Property.find(most_visited[0]) unless most_visited.nil?
 
       missing = 3 - properties.count
 

@@ -12,6 +12,9 @@ class Property < ApplicationRecord
   has_many :comments
   has_many :reservations
   has_many :visitors
+  has_many :talks
+  has_many :messages
+
 
   searchkick
 

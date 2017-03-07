@@ -3,7 +3,7 @@ class Reservation < ApplicationRecord
 
 	belongs_to :property
 	belongs_to :user
-
+	has_many :talks
 	validates_presence_of :property, :user
 
 	def evaluate comment, new_rating
@@ -20,5 +20,9 @@ class Reservation < ApplicationRecord
 			self.evaluation = true
 			self.save! 
 		end
+	end
+
+	def interval_of_days
+		(self.checkout_date - self.checkin_date).to_i
 	end
 end

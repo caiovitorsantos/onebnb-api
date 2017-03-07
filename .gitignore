@@ -1,2 +1,5 @@
 ./log/development.log
+./log/test.log
 ./temp
+./public/uploads/tmp/1
+

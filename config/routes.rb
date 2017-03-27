@@ -18,6 +18,8 @@ Rails.application.routes.draw do
       get 'search', to: 'properties#search'
       get 'autocomplete', to: 'properties#autocomplete'
       get 'hot_properties', to: 'properties#hot_properties'
+      get 'trips', to: 'properties#trips'
+      get 'my_properties', to: 'properties#my_properties'
       
       resources :properties do
         member do
@@ -28,7 +30,7 @@ Rails.application.routes.draw do
     
       resources :reservations  do
         member do
-          post 'evaluation', to: 'reservation#evaluation'
+          post 'evaluation', to: 'reservations#evaluation'
         end
       end
 

@@ -1,11 +1,54 @@
-# API OneBnb
 
-This is a OneBitCode course project whose goal is to develop a replica of the Airbnb hosting reservations system. In this repository will be produced the system API using Ruby on Rails 5 API, postgreSQL, Redis, Docker for project containerization.
+**Onebnb API**
+===================
 
-To run the project you must have Docker and docker compose installed on your computer
+![ruby](https://img.shields.io/badge/Ruby-2.3.3-red.svg)
+![rails](https://img.shields.io/badge/Rails-5.0.1-red.svg)
+![rails](https://img.shields.io/docker/automated/jrottenberg/ffmpeg.svg)
 
-* Clone this repository: `git clone git@github.com:caiovitorsantos/onebnb-api.git` or `git clone https://github.com/caiovitorsantos/onebnb-api.git`
+#About the project
 
-* On bash inside project directory run this command: `docker-compose up --build` and wait...
+This is a OneBitCode course project whose goal is to develop a replica of the Airbnb hosting reservations system. In this repository will be produced the system API using Ruby on Rails 5 API, PostgreSQL, Elastic Search, Redis, Docker for project containerization.
 
-* Create the database and your tables: `docker-compose run website rake db:create` and then `docker-compose run website rake db:migrate`. You can also seed your DB with example data with: `docker-compose run website rake db:seed`
+
+# Require
+```
+  * Docker
+  * Docker Compose
+```
+# Stack
+```
+  * Application  
+  * Postgres
+  * Elastic Search
+  * Redis
+```
+# Getting Started
+
+## 1. Clone this repository
+
+## 2. Run within the project:
+```
+   $ mkdir data data/application && touch data/application/.env
+```   
+
+## 3. Add data/application/.env
+```
+  cp data/application/.env.dist data/application/.env
+```
+
+## 4. Start docker-compose
+```
+   $ docker-compose up --build      
+```
+
+# Run
+```
+$ docker-compose run website rails db:create db:migrate
+```
+with Elastic Search runing: `$ docker-compose run website rails db:seed`
+
+# Test App
+```
+$ docker-compose run website rspec
+```

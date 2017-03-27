@@ -16,5 +16,7 @@ class User < ActiveRecord::Base
   has_many :reservations
   has_many :talks
   has_many :messages
+  has_many :properties
+
 
 end

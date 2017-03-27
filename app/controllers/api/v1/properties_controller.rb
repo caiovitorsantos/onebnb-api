@@ -111,6 +111,33 @@ class Api::V1::PropertiesController < ApplicationController
     end
   end
 
+  # GET /api/v1/trips
+  # GET /api/v1/trips.json
+  def trips
+    begin
+      @properties = {}
+      # Next
+      @properties[:next] = current_api_v1_user.reservations.where(status: :active).map { |r| r.property }
+      # Previous
+      @properties[:previous] = current_api_v1_user.reservations.where(status: :finished).map { |r| r.property }
+      # Pending
+      @properties[:pending] = current_api_v1_user.reservations.where(status: :pending).map { |r| r.property }
+      # Wishlist
+      @properties[:wishlist] = current_api_v1_user.wishlists.map { |w| w.property }
+
+    rescue Exception => errors
+      render json: errors, status: :unprocessable_entity
+    end
+  end
+
+  def my_properties
+    @api_v1_properties = current_api_v1_user.properties
+      .where(status: :active)
+      .includes(:reservations)
+      .order("reservations.created_at DESC")
+
+    render template: '/api/v1/properties/index', status: 200
+  end
 
   private
     # Use callbacks to share common setup or constraints between actions.

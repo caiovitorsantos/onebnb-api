@@ -4,7 +4,14 @@ class Reservation < ApplicationRecord
 	belongs_to :property
 	belongs_to :user
 	has_many :talks
+
 	validates_presence_of :property, :user
+
+	before_create :set_pending_status
+
+	def set_pending_status
+		self.status ||= :pending
+	end
 
 	def evaluate comment, new_rating
 		Reservation.transaction do 

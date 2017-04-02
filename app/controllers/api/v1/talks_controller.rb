@@ -41,7 +41,7 @@ class Api::V1::TalksController < ApplicationController
 	  end
 
 	  def is_talk_participant?
-	  	if @api_v1_talks.user != current_api_v1_user and  @api_v1_talks.property.user_id != current_api_v1_user
+	  	if @api_v1_talks.user != current_api_v1_user and  @api_v1_talks.property.user != current_api_v1_user
 	  		render json: {message: "unauthorized"}, status: 401 and return
       end
 	  end
